@@ -1,5 +1,5 @@
 {
-  "name": "professional-network",
+  "name": "professional-network-backend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,14 +9,16 @@
     "lint": "next lint",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:reset": "supabase db reset"
+    "supabase:reset": "supabase db reset",
+    "supabase:types": "supabase gen types typescript --local > src/lib/types/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
     "next": "15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -25,4 +27,3 @@
     "supabase": "^1.200.3",
     "typescript": "^5"
   }
-}
