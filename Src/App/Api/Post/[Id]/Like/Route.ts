@@ -1,55 +1,55 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/utils/auth'
+import { PostService } from '@/services/post.service'
 import { NextResponse } from 'next/server'
 
-export async function POST(
+export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient()
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = createClient()
+    const postService = new PostService(supabase)
+
+    const post = await postService.getPostById(params.id)
+
+    return NextResponse.json(post)
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 404 })
   }
+}
 
-  const { data, error } = await supabase
-    .from('post_likes')
-    .insert({
-      post_id: params.id,
-      user_id: user.id
-    })
-    .select()
-    .single()
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireAuth()
+    const supabase = createClient()
+    const body = await request.json()
 
-  if (error) {
+    const postService = new PostService(supabase)
+    const post = await postService.updatePost(params.id, body)
+
+    return NextResponse.json(post)
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
-
-  return NextResponse.json(data)
 }
 
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient()
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  try {
+    const user = await requireAuth()
+    const supabase = createClient()
 
-  const { error } = await supabase
-    .from('post_likes')
-    .delete()
-    .eq('post_id', params.id)
-    .eq('user_id', user.id)
+    const postService = new PostService(supabase)
+    await postService.deletePost(params.id)
 
-  if (error) {
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
-
-  return NextResponse.json({ success: true })
 }
