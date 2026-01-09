@@ -1,53 +1,47 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/utils/auth'
+import { postSchema } from '@/lib/utils/validation'
+import { PostService } from '@/services/post.service'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const supabase = createClient()
   const { searchParams } = new URL(request.url)
   const limit = parseInt(searchParams.get('limit') || '20')
   const offset = parseInt(searchParams.get('offset') || '0')
 
-  const { data, error } = await supabase
-    .from('posts')
-    .select(`
-      *,
-      author:users!posts_author_id_fkey(*),
-      post_media(*),
-      post_likes(count)
-    `)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+  try {
+    const supabase = createClient()
+    const user = await requireAuth()
+    const postService = new PostService(supabase)
 
-  if (error) {
+    const posts = await postService.getFeed(user.id, limit, offset)
+
+    return NextResponse.json(posts)
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
-
-  return NextResponse.json(data)
 }
 
 export async function POST(request: Request) {
-  const supabase = createClient()
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  try {
+    const user = await requireAuth()
+    const supabase = createClient()
+    const body = await request.json()
 
-  const body = await request.json()
+    // Validate input
+    const validatedData = postSchema.parse(body)
 
-  const { data, error } = await supabase
-    .from('posts')
-    .insert({
+    const postService = new PostService(supabase)
+    const post = await postService.createPost({
       author_id: user.id,
-      ...body
+      ...validatedData
     })
-    .select()
-    .single()
 
-  if (error) {
+    return NextResponse.json(post, { status: 201 })
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return NextResponse.json({ error: error.errors }, { status: 400 })
+    }
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
-
-  return NextResponse.json(data)
 }
